@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NetworthLive - Login</title>
+  <title>NetworthLive - Investment Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
@@ -18,7 +18,7 @@
     }
     .hidden { display: none; }
     .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
     }
     label, input {
@@ -41,17 +41,52 @@
       cursor: pointer;
       margin-top: 1rem;
     }
-    canvas { background-color: #f5f5f5; border-radius: 8px; margin-top: 2rem; }
+    .toggle {
+      text-align: center;
+      margin-top: 1rem;
+      cursor: pointer;
+      color: blue;
+    }
+    canvas { 
+      background-color: #f5f5f5; 
+      border-radius: 8px; 
+      margin-top: 2rem;
+      width: 100%;
+      height: 300px;
+    }
+    .progress-container {
+      margin-top: 1rem;
+      width: 100%;
+      background-color: #ddd;
+      height: 30px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #4caf50;
+      text-align: center;
+      line-height: 30px;
+      color: white;
+    }
+    .tab {
+      display: none;
+    }
+    .tab.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div id="auth" class="container">
-    <h1>Sign In to NetworthLive</h1>
+    <h1 id="authHeader">Sign In to NetworthLive</h1>
     <label>Email:</label>
     <input type="email" id="email">
     <label>Password:</label>
     <input type="password" id="password">
-    <button onclick="signIn()">Sign In / Sign Up</button>
+    <button onclick="handleAuth()" id="authButton">Sign In</button>
+    <p class="toggle" onclick="toggleAuthMode()" id="toggleMode">Don't have an account? Sign Up</p>
     <p id="authMessage"></p>
   </div>
 
@@ -89,7 +124,33 @@
       <input type="number" id="debt" value="1000">
     </div>
 
-    <canvas id="netWorthChart" height="100"></canvas>
+    <div class="section">
+      <h2>Projected Goal</h2>
+      <label for="goal">Desired Net Worth ($):</label>
+      <input type="number" id="goal" value="1000000">
+      <div class="progress-container">
+        <div class="progress-bar" id="progressBar">0%</div>
+      </div>
+    </div>
+
+    <div class="tab active" id="trackerTab">
+      <h2>Net Worth Tracker</h2>
+      <canvas id="netWorthChart" height="100"></canvas>
+    </div>
+
+    <div class="tab" id="investmentTab">
+      <h2>Investment Calculator</h2>
+      <label for="monthlyInvestment">Monthly Recurring Investment ($):</label>
+      <input type="number" id="monthlyInvestment" value="200">
+      <label for="investmentDuration">Investment Duration (Years):</label>
+      <input type="number" id="investmentDuration" value="10">
+      <label for="investmentReturnRate">Expected Annual Return Rate (%):</label>
+      <input type="number" id="investmentReturnRate" value="7">
+      <button onclick="calculateInvestment()">Calculate Projected Growth</button>
+      <canvas id="investmentChart" height="100"></canvas>
+    </div>
+
+    <button onclick="resetProgress()">Reset</button>
   </div>
 
   <script>
@@ -97,32 +158,47 @@
     const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
     const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    async function signIn() {
+    let isSignUp = false;
+    let netWorth = 0;
+    let passiveGrowthPerSecond = 0;
+    let chart = null;
+    let investmentChart = null;
+
+    function toggleAuthMode() {
+      isSignUp = !isSignUp;
+      document.getElementById("authHeader").innerText = isSignUp ? "Sign Up for NetworthLive" : "Sign In to NetworthLive";
+      document.getElementById("authButton").innerText = isSignUp ? "Sign Up" : "Sign In";
+      document.getElementById("toggleMode").innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
+      document.getElementById("authMessage").innerText = "";
+    }
+
+    async function handleAuth() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        const { data: signupData, error: signupError } = await supabase.auth.signUp({ email, password });
-        if (signupError) {
-          document.getElementById('authMessage').innerText = signupError.message;
+      let result;
+      if (isSignUp) {
+        result = await supabase.auth.signUp({ email, password });
+        if (result.error) {
+          document.getElementById('authMessage').innerText = result.error.message;
         } else {
-          document.getElementById('authMessage').innerText = "Account created! Check your email for confirmation.";
+          document.getElementById('authMessage').innerText = "Account created! Check your email.";
         }
       } else {
-        document.getElementById('auth').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        startApp();
+        result = await supabase.auth.signInWithPassword({ email, password });
+        if (result.error) {
+          document.getElementById('authMessage').innerText = result.error.message;
+        } else {
+          document.getElementById('auth').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          startApp();
+        }
       }
     }
 
     function formatMoney(value) {
       return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
     }
-
-    let netWorth = 0;
-    let passiveGrowthPerSecond = 0;
-    let chart = null;
 
     function startApp() {
       const ctx = document.getElementById('netWorthChart').getContext('2d');
@@ -140,7 +216,53 @@
           }]
         },
         options: {
-          scales: { x: { display: false }, y: { beginAtZero: true } }
+          scales: {
+            x: { 
+              display: true, 
+              ticks: { 
+                maxRotation: 0, 
+                minRotation: 0 
+              }
+            },
+            y: {
+              beginAtZero: true,
+              max: netWorth + 50000, // Ensures the graph scales dynamically
+            }
+          },
+          responsive: true,
+          maintainAspectRatio: false, // Ensures the chart doesn't stretch
+        }
+      });
+
+      const investmentCtx = document.getElementById('investmentChart').getContext('2d');
+      investmentChart = new Chart(investmentCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Projected Investment Growth',
+            borderColor: '#4caf50',
+            backgroundColor: '#b0f0b0',
+            data: [],
+            fill: true,
+            tension: 0.4,
+          }]
+        },
+        options: {
+          scales: {
+            x: { 
+              display: true, 
+              ticks: { 
+                maxRotation: 0, 
+                minRotation: 0 
+              }
+            },
+            y: {
+              beginAtZero: true,
+            }
+          },
+          responsive: true,
+          maintainAspectRatio: false, 
         }
       });
 
@@ -166,13 +288,22 @@
       netWorth += passiveGrowthPerSecond / 10;
       document.getElementById("counter").innerText = formatMoney(netWorth);
 
+      // Update progress bar
+      const goal = parseFloat(document.getElementById("goal").value) || 0;
+      const progress = (netWorth / goal) * 100;
+      document.getElementById("progressBar").style.width = `${Math.min(progress, 100)}%`;
+      document.getElementById("progressBar").innerText = `${Math.min(progress, 100).toFixed(2)}%`;
+
       const now = new Date();
       chart.data.labels.push(now.toLocaleTimeString());
       chart.data.datasets[0].data.push(netWorth);
+      
+      // Limit number of data points to 50 for better readability
       if (chart.data.labels.length > 50) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
       }
+
       chart.update();
     }
 
@@ -180,16 +311,36 @@
       if (reset) {
         const starting = parseFloat(document.getElementById("starting").value) || 0;
         netWorth = starting;
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
       }
       passiveGrowthPerSecond = calculateGrowthPerSecond();
     }
 
-    document.querySelectorAll("input").forEach(input => {
-      input.addEventListener("input", (e) => {
-        if (e.target.id === "starting") recalculateAll(true);
-        else recalculateAll(false);
-      });
-    });
-  </script>
-</body>
-</html>
+    function resetProgress() {
+      recalculateAll(true); // Reset net worth and chart
+      document.getElementById("goal").value = 1000000; // Reset goal to default
+      document.getElementById("progressBar").style.width = '0%'; // Reset progress bar
+      document.getElementById("progressBar").innerText = '0%';
+      document.getElementById("investmentReturn").value = 7; // Reset investment return rate
+      document.getElementById("investmentDuration").value = 10; // Reset duration
+      document.getElementById("monthlyInvestment").value = 200; // Reset monthly investment
+    }
+
+    function calculateInvestment() {
+      const monthlyInvestment = parseFloat(document.getElementById("monthlyInvestment").value) || 0;
+      const duration = parseInt(document.getElementById("investmentDuration").value) || 10;
+      const returnRate = parseFloat(document.getElementById("investmentReturnRate").value) || 7;
+
+      const years = duration;
+      const monthlyRate = returnRate / 100 / 12;
+      const months = years * 12;
+
+      let projectedAmount = 0;
+      let chartLabels = [];
+      let chartData = [];
+
+      for (let month = 1; month <= months; month++) {
+        projectedAmount += monthlyInvestment;
+        projectedAmount *= (1 + monthlyRate);
+        chartLabels.push(`Year ${Math
