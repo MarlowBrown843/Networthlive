@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NetworthLive - Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetworthLive - Magic Link Login</title>
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
@@ -13,59 +13,43 @@
       font-family: Arial, sans-serif;
       padding: 2rem;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-    }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
     }
     .hidden { display: none; }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
     label, input {
       display: block;
-      margin-top: 0.5rem;
+      margin: 0.5rem 0;
     }
-    input[type="email"], input[type="password"] {
+    input[type="email"] {
       width: 100%;
       padding: 0.5rem;
-      margin-bottom: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
     }
     button {
-      padding: 0.5rem;
-      width: 100%;
-      background: #111;
-      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #111;
+      color: #fff;
       border: none;
       cursor: pointer;
-    }
-    .toggle {
-      text-align: center;
-      margin-top: 1rem;
-      color: blue;
-      cursor: pointer;
-    }
-    canvas {
-      background: #f4f4f4;
-      border-radius: 8px;
-      margin-top: 2rem;
-      width: 100%;
-    }
-    #counter {
-      text-align: center;
-      font-size: 2rem;
       margin-top: 1rem;
     }
+    canvas { background-color: #f5f5f5; border-radius: 8px; margin-top: 2rem; }
   </style>
 </head>
 <body>
   <div id="auth" class="container">
-    <h1 id="authHeader">Sign In to NetworthLive</h1>
+    <h1>Magic Link Login</h1>
     <label>Email:</label>
-    <input type="email" id="email" />
-    <label>Password:</label>
-    <input type="password" id="password" />
-    <button id="authButton">Sign In</button>
-    <div class="toggle" id="toggleMode">Don't have an account? Sign Up</div>
+    <input type="email" id="email">
+    <button id="authButton">Send Magic Link</button>
     <p id="authMessage"></p>
   </div>
 
@@ -76,61 +60,48 @@
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
       const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
       const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-      let isSignUp = false;
-
-      document.getElementById("toggleMode").addEventListener("click", () => {
-        isSignUp = !isSignUp;
-        document.getElementById("authHeader").innerText = isSignUp ? "Sign Up for NetworthLive" : "Sign In to NetworthLive";
-        document.getElementById("authButton").innerText = isSignUp ? "Sign Up" : "Sign In";
-        document.getElementById("toggleMode").innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
-        document.getElementById("authMessage").innerText = "";
-      });
+      const userSession = await supabase.auth.getSession();
+      if (userSession.data.session) {
+        document.getElementById('auth').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        startApp();
+      }
 
       document.getElementById("authButton").addEventListener("click", async () => {
         const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-
-        if (isSignUp) {
-          const { error } = await supabase.auth.signUp({ email, password });
-          document.getElementById("authMessage").innerText = error ? error.message : "Signed up! Check your email.";
-        } else {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) {
-            document.getElementById("authMessage").innerText = error.message;
-          } else {
-            document.getElementById("auth").classList.add("hidden");
-            document.getElementById("app").classList.remove("hidden");
-            startApp();
-          }
-        }
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        document.getElementById("authMessage").innerText = error ? error.message : "Magic link sent! Check your email.";
       });
 
-      function startApp() {
-        let netWorth = 6000;
-        let passiveGrowthPerSecond = 0.03;
+      let netWorth = 6000;
+      let passiveGrowthPerSecond = 0.03;
+      let chart = null;
 
-        const counter = document.getElementById("counter");
-        const ctx = document.getElementById("netWorthChart").getContext("2d");
-        const chart = new Chart(ctx, {
-          type: "line",
+      function formatMoney(value) {
+        return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      }
+
+      function startApp() {
+        const ctx = document.getElementById('netWorthChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'line',
           data: {
             labels: [],
             datasets: [{
-              label: "Net Worth",
+              label: 'Net Worth',
+              borderColor: '#111',
+              backgroundColor: '#ccc',
               data: [],
-              borderColor: "#111",
-              backgroundColor: "#e5e5e5",
               fill: true,
-              tension: 0.3,
+              tension: 0.4,
             }]
           },
           options: {
-            responsive: true,
             animation: false,
             scales: {
               x: { display: false },
@@ -141,17 +112,15 @@
 
         setInterval(() => {
           netWorth += passiveGrowthPerSecond;
-          counter.innerText = "$" + netWorth.toFixed(3);
+          document.getElementById("counter").innerText = formatMoney(netWorth);
 
-          const now = new Date().toLocaleTimeString();
-          chart.data.labels.push(now);
+          const now = new Date();
+          chart.data.labels.push(now.toLocaleTimeString());
           chart.data.datasets[0].data.push(netWorth);
-
-          if (chart.data.labels.length > 100) {
+          if (chart.data.labels.length > 50) {
             chart.data.labels.shift();
             chart.data.datasets[0].data.shift();
           }
-
           chart.update();
         }, 1000);
       }
@@ -159,3 +128,4 @@
   </script>
 </body>
 </html>
+
