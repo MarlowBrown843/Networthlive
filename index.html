@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NetworthLive - Login</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body {
       background-color: #ffffff;
@@ -13,204 +13,148 @@
       font-family: Arial, sans-serif;
       padding: 2rem;
     }
-    h1, h2 {
+    h1 {
       text-align: center;
     }
-    .hidden { display: none; }
     .container {
-      max-width: 600px;
+      max-width: 500px;
       margin: 0 auto;
     }
+    .hidden { display: none; }
     label, input {
       display: block;
-      margin: 0.5rem 0;
+      margin-top: 0.5rem;
     }
-    input[type="email"], input[type="password"], input[type="number"] {
+    input[type="email"], input[type="password"] {
       width: 100%;
       padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
+      margin-bottom: 1rem;
     }
     button {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-      background-color: #111;
-      color: #fff;
+      padding: 0.5rem;
+      width: 100%;
+      background: #111;
+      color: white;
       border: none;
       cursor: pointer;
-      margin-top: 1rem;
     }
     .toggle {
       text-align: center;
       margin-top: 1rem;
-      cursor: pointer;
       color: blue;
+      cursor: pointer;
     }
-    canvas { background-color: #f5f5f5; border-radius: 8px; margin-top: 2rem; }
+    canvas {
+      background: #f4f4f4;
+      border-radius: 8px;
+      margin-top: 2rem;
+      width: 100%;
+    }
+    #counter {
+      text-align: center;
+      font-size: 2rem;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
   <div id="auth" class="container">
     <h1 id="authHeader">Sign In to NetworthLive</h1>
     <label>Email:</label>
-    <input type="email" id="email">
+    <input type="email" id="email" />
     <label>Password:</label>
-    <input type="password" id="password">
-    <button onclick="handleAuth()" id="authButton">Sign In</button>
-    <p class="toggle" onclick="toggleAuthMode()" id="toggleMode">Don't have an account? Sign Up</p>
+    <input type="password" id="password" />
+    <button id="authButton">Sign In</button>
+    <div class="toggle" id="toggleMode">Don't have an account? Sign Up</div>
     <p id="authMessage"></p>
   </div>
 
   <div id="app" class="hidden container">
     <h1>💰 Live Net Worth Tracker</h1>
     <div id="counter">$0.000</div>
-
-    <div class="section">
-      <h2>Profile Inputs</h2>
-      <label for="starting">Current Net Worth ($):</label>
-      <input type="number" id="starting" value="6000">
-
-      <label for="income">Monthly Income ($):</label>
-      <input type="number" id="income" value="3000">
-
-      <label for="investments">Investments ($):</label>
-      <input type="number" id="investments" value="5000">
-
-      <label for="investmentReturn">Expected Annual Investment Return (%):</label>
-      <input type="number" id="investmentReturn" value="9">
-
-      <label for="cash">Cash in Bank ($):</label>
-      <input type="number" id="cash" value="2000">
-    </div>
-
-    <div class="section">
-      <h2>Liabilities / Bills</h2>
-      <label for="rent">Monthly Rent ($):</label>
-      <input type="number" id="rent" value="750">
-
-      <label for="bills">Other Monthly Bills ($):</label>
-      <input type="number" id="bills" value="250">
-
-      <label for="debt">Loans / Credit Card Debt ($):</label>
-      <input type="number" id="debt" value="1000">
-    </div>
-
     <canvas id="netWorthChart" height="100"></canvas>
   </div>
 
   <script>
-    const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    document.addEventListener("DOMContentLoaded", () => {
+      const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
+      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    let isSignUp = false;
+      let isSignUp = false;
 
-    function toggleAuthMode() {
-      isSignUp = !isSignUp;
-      document.getElementById("authHeader").innerText = isSignUp ? "Sign Up for NetworthLive" : "Sign In to NetworthLive";
-      document.getElementById("authButton").innerText = isSignUp ? "Sign Up" : "Sign In";
-      document.getElementById("toggleMode").innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
-      document.getElementById("authMessage").innerText = "";
-    }
+      document.getElementById("toggleMode").addEventListener("click", () => {
+        isSignUp = !isSignUp;
+        document.getElementById("authHeader").innerText = isSignUp ? "Sign Up for NetworthLive" : "Sign In to NetworthLive";
+        document.getElementById("authButton").innerText = isSignUp ? "Sign Up" : "Sign In";
+        document.getElementById("toggleMode").innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
+        document.getElementById("authMessage").innerText = "";
+      });
 
-    async function handleAuth() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+      document.getElementById("authButton").addEventListener("click", async () => {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
 
-      let result;
-      if (isSignUp) {
-        result = await supabase.auth.signUp({ email, password });
-        if (result.error) {
-          document.getElementById('authMessage').innerText = result.error.message;
+        if (isSignUp) {
+          const { error } = await supabase.auth.signUp({ email, password });
+          document.getElementById("authMessage").innerText = error ? error.message : "Signed up! Check your email.";
         } else {
-          document.getElementById('authMessage').innerText = "Account created! Check your email.";
-        }
-      } else {
-        result = await supabase.auth.signInWithPassword({ email, password });
-        if (result.error) {
-          document.getElementById('authMessage').innerText = result.error.message;
-        } else {
-          document.getElementById('auth').classList.add('hidden');
-          document.getElementById('app').classList.remove('hidden');
-          startApp();
-        }
-      }
-    }
-
-    function formatMoney(value) {
-      return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-    }
-
-    let netWorth = 0;
-    let passiveGrowthPerSecond = 0;
-    let chart = null;
-
-    function startApp() {
-      const ctx = document.getElementById('netWorthChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: [],
-          datasets: [{
-            label: 'Net Worth',
-            borderColor: '#111',
-            backgroundColor: '#ccc',
-            data: [],
-            fill: true,
-            tension: 0.4,
-          }]
-        },
-        options: {
-          scales: { x: { display: false }, y: { beginAtZero: true } }
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            document.getElementById("authMessage").innerText = error.message;
+          } else {
+            document.getElementById("auth").classList.add("hidden");
+            document.getElementById("app").classList.remove("hidden");
+            startApp();
+          }
         }
       });
 
-      recalculateAll(true);
-      setInterval(updateCounter, 100);
-    }
+      function startApp() {
+        let netWorth = 6000;
+        let passiveGrowthPerSecond = 0.03;
 
-    function calculateGrowthPerSecond() {
-      const income = parseFloat(document.getElementById("income").value) || 0;
-      const rent = parseFloat(document.getElementById("rent").value) || 0;
-      const bills = parseFloat(document.getElementById("bills").value) || 0;
-      const investments = parseFloat(document.getElementById("investments").value) || 0;
-      const investmentReturn = parseFloat(document.getElementById("investmentReturn").value) || 0;
+        const counter = document.getElementById("counter");
+        const ctx = document.getElementById("netWorthChart").getContext("2d");
+        const chart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: [],
+            datasets: [{
+              label: "Net Worth",
+              data: [],
+              borderColor: "#111",
+              backgroundColor: "#e5e5e5",
+              fill: true,
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            animation: false,
+            scales: {
+              x: { display: false },
+              y: { beginAtZero: true }
+            }
+          }
+        });
 
-      const monthlySavings = income - rent - bills;
-      const savingsGrowth = monthlySavings > 0 ? (monthlySavings * 12) / (365 * 24 * 60 * 60) : 0;
-      const investmentGrowth = investments * (investmentReturn / 100) / (365 * 24 * 60 * 60);
+        setInterval(() => {
+          netWorth += passiveGrowthPerSecond;
+          counter.innerText = "$" + netWorth.toFixed(3);
 
-      return savingsGrowth + investmentGrowth;
-    }
+          const now = new Date().toLocaleTimeString();
+          chart.data.labels.push(now);
+          chart.data.datasets[0].data.push(netWorth);
 
-    function updateCounter() {
-      netWorth += passiveGrowthPerSecond / 10;
-      document.getElementById("counter").innerText = formatMoney(netWorth);
+          if (chart.data.labels.length > 100) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+          }
 
-      const now = new Date();
-      chart.data.labels.push(now.toLocaleTimeString());
-      chart.data.datasets[0].data.push(netWorth);
-      if (chart.data.labels.length > 50) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+          chart.update();
+        }, 1000);
       }
-      chart.update();
-    }
-
-    function recalculateAll(reset = false) {
-      if (reset) {
-        const starting = parseFloat(document.getElementById("starting").value) || 0;
-        netWorth = starting;
-      }
-      passiveGrowthPerSecond = calculateGrowthPerSecond();
-    }
-
-    document.querySelectorAll("input").forEach(input => {
-      input.addEventListener("input", (e) => {
-        if (e.target.id === "starting") recalculateAll(true);
-        else recalculateAll(false);
-      });
     });
   </script>
 </body>
