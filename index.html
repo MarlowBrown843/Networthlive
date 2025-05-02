@@ -1,70 +1,139 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
-  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetworthLive - Magic Link Login</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      background-color: #ffffff;
+      color: #111;
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .hidden { display: none; }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    label, input {
+      display: block;
+      margin: 0.5rem 0;
+    }
+    input[type="email"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #111;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    canvas {
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="auth" class="container">
+    <h1>Magic Link Login</h1>
+    <label>Email:</label>
+    <input type="email" id="email">
+    <button id="authButton">Send Magic Link</button>
+    <p id="authMessage"></p>
+  </div>
 
-  // Handle magic link token in URL
-  const { error: urlError } = await supabase.auth.getSessionFromUrl();
+  <div id="app" class="hidden container">
+    <h1>💰 Live Net Worth Tracker</h1>
+    <div id="counter">$0.000</div>
+    <canvas id="netWorthChart" height="100"></canvas>
+  </div>
 
-  // Then check if session is active
-  const { data: { session } } = await supabase.auth.getSession();
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
+      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-  if (session) {
-    document.getElementById('auth').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    startApp();
-  }
+      // Step 1: Catch redirect from magic link if present
+      const { error: urlError } = await supabase.auth.getSessionFromUrl();
+      if (urlError) console.error("Magic link error:", urlError);
 
-  document.getElementById("authButton").addEventListener("click", async () => {
-    const email = document.getElementById("email").value;
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    document.getElementById("authMessage").innerText = error ? error.message : "Magic link sent! Check your email.";
-  });
+      // Step 2: Get session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        document.getElementById('auth').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        startApp();
+      }
 
-  let netWorth = 6000;
-  let passiveGrowthPerSecond = 0.03;
-  let chart = null;
+      document.getElementById("authButton").addEventListener("click", async () => {
+        const email = document.getElementById("email").value;
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        document.getElementById("authMessage").innerText = error ? error.message : "Magic link sent! Check your email.";
+      });
 
-  function formatMoney(value) {
-    return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-  }
+      let netWorth = 6000;
+      let passiveGrowthPerSecond = 0.03;
+      let chart = null;
 
-  function startApp() {
-    const ctx = document.getElementById('netWorthChart').getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Net Worth',
-          borderColor: '#111',
-          backgroundColor: '#ccc',
-          data: [],
-          fill: true,
-          tension: 0.4,
-        }]
-      },
-      options: {
-        animation: false,
-        scales: {
-          x: { display: false },
-          y: { beginAtZero: true }
-        }
+      function formatMoney(value) {
+        return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      }
+
+      function startApp() {
+        const ctx = document.getElementById('netWorthChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              label: 'Net Worth',
+              borderColor: '#111',
+              backgroundColor: '#ccc',
+              data: [],
+              fill: true,
+              tension: 0.4,
+            }]
+          },
+          options: {
+            animation: false,
+            scales: {
+              x: { display: false },
+              y: { beginAtZero: true }
+            }
+          }
+        });
+
+        setInterval(() => {
+          netWorth += passiveGrowthPerSecond;
+          document.getElementById("counter").innerText = formatMoney(netWorth);
+
+          const now = new Date();
+          chart.data.labels.push(now.toLocaleTimeString());
+          chart.data.datasets[0].data.push(netWorth);
+          if (chart.data.labels.length > 50) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+          }
+          chart.update();
+        }, 1000);
       }
     });
-
-    setInterval(() => {
-      netWorth += passiveGrowthPerSecond;
-      document.getElementById("counter").innerText = formatMoney(netWorth);
-
-      const now = new Date();
-      chart.data.labels.push(now.toLocaleTimeString());
-      chart.data.datasets[0].data.push(netWorth);
-      if (chart.data.labels.length > 50) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-      }
-      chart.update();
-    }, 1000);
-  }
-});
+  </script>
+</body>
+</html>
