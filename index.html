@@ -1,150 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NetWorth Live</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetworthLive - Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #fff;
+      background-color: #ffffff;
       color: #111;
+      font-family: Arial, sans-serif;
+      padding: 2rem;
       margin: 0;
-      padding: 20px;
     }
+    h1, h2 {
+      text-align: center;
+    }
+    .hidden { display: none; }
     .container {
-      max-width: 800px;
+      max-width: 600px;
       margin: 0 auto;
     }
-    h1 {
-      font-size: 2em;
-      text-align: center;
-    }
-    label {
+    label, input {
       display: block;
-      margin: 10px 0 5px;
+      margin: 0.5rem 0;
     }
-    input {
+    input[type="email"], input[type="password"], input[type="number"] {
       width: 100%;
-      padding: 10px;
-      margin-bottom: 10px;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
     }
-    #netWorthDisplay {
-      font-size: 2em;
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #111;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    .toggle {
       text-align: center;
-      margin: 20px 0;
+      margin-top: 1rem;
+      cursor: pointer;
+      color: blue;
     }
-    #chartContainer {
-      margin-top: 30px;
+    canvas {
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      margin-top: 2rem;
+      width: 100% !important;
+      height: auto !important;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>NetWorth Live</h1>
-    <label for="startingNetWorth">Starting Net Worth ($):</label>
-    <input type="number" id="startingNetWorth" value="0">
-
-    <label for="monthlyIncome">Monthly Income ($):</label>
-    <input type="number" id="monthlyIncome" value="0">
-
-    <label for="monthlyExpenses">Monthly Expenses ($):</label>
-    <input type="number" id="monthlyExpenses" value="0">
-
-    <label for="investmentAmount">Investment Amount ($):</label>
-    <input type="number" id="investmentAmount" value="0">
-
-    <label for="annualReturn">Annual Return (%):</label>
-    <input type="number" id="annualReturn" value="0">
-
-    <div id="netWorthDisplay">$0.0000</div>
-
-    <canvas id="netWorthChart" width="800" height="400"></canvas>
+  <div id="auth" class="container">
+    <h1 id="authHeader">Sign In to NetworthLive</h1>
+    <label>Email:</label>
+    <input type="email" id="email">
+    <label>Password:</label>
+    <input type="password" id="password">
+    <button onclick="handleAuth()" id="authButton">Sign In</button>
+    <p class="toggle" onclick="toggleAuthMode()" id="toggleMode">Don't have an account? Sign Up</p>
+    <p id="authMessage"></p>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <div id="app" class="hidden container">
+    <h1>💰 Live Net Worth Tracker</h1>
+    <div id="counter">$0.000</div>
+
+    <div class="section">
+      <h2>Profile Inputs</h2>
+      <label for="starting">Current Net Worth ($):</label>
+      <input type="number" id="starting" value="6000">
+
+      <label for="income">Monthly Income ($):</label>
+      <input type="number" id="income" value="3000">
+
+      <label for="investments">Investments ($):</label>
+      <input type="number" id="investments" value="5000">
+
+      <label for="investmentReturn">Expected Annual Investment Return (%):</label>
+      <input type="number" id="investmentReturn" value="9">
+
+      <label for="cash">Cash in Bank ($):</label>
+      <input type="number" id="cash" value="2000">
+    </div>
+
+    <div class="section">
+      <h2>Liabilities / Bills</h2>
+      <label for="rent">Monthly Rent ($):</label>
+      <input type="number" id="rent" value="750">
+
+      <label for="bills">Other Monthly Bills ($):</label>
+      <input type="number" id="bills" value="250">
+
+      <label for="debt">Loans / Credit Card Debt ($):</label>
+      <input type="number" id="debt" value="1000">
+    </div>
+
+    <canvas id="netWorthChart"></canvas>
+  </div>
+
   <script>
-    let netWorth = 0;
-    let growthPerMs = 0;
-    let dataPoints = [];
-    let labels = [];
-    let chart;
+    const supabaseUrl = "https://jeoapkxwouaszaehiapy.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implb2Fwa3h3b3Vhc3phZWhpYXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MTM1NDgsImV4cCI6MjA2MTQ4OTU0OH0.aKxjBXa72Pv84vXyUCyGr22rtDRThaTpO9QcM6gUHdA";
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let isSignUp = false;
+
+    function toggleAuthMode() {
+      isSignUp = !isSignUp;
+      document.getElementById("authHeader").innerText = isSignUp ? "Sign Up for NetworthLive" : "Sign In to NetworthLive";
+      document.getElementById("authButton").innerText = isSignUp ? "Sign Up" : "Sign In";
+      document.getElementById("toggleMode").innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
+      document.getElementById("authMessage").innerText = "";
+    }
+
+    async function handleAuth() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      let result;
+      if (isSignUp) {
+        result = await supabase.auth.signUp({ email, password });
+        if (result.error) {
+          document.getElementById('authMessage').innerText = result.error.message;
+        } else {
+          document.getElementById('authMessage').innerText = "Account created! Check your email.";
+        }
+      } else {
+        result = await supabase.auth.signInWithPassword({ email, password });
+        if (result.error) {
+          document.getElementById('authMessage').innerText = result.error.message;
+        } else {
+          document.getElementById('auth').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          startApp();
+        }
+      }
+    }
 
     function formatMoney(value) {
-      return "$" + value.toFixed(4);
+      return "$" + value.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
     }
 
-    function calculateGrowthRate() {
-      const income = parseFloat(document.getElementById("monthlyIncome").value) || 0;
-      const expenses = parseFloat(document.getElementById("monthlyExpenses").value) || 0;
-      const investment = parseFloat(document.getElementById("investmentAmount").value) || 0;
-      const annualReturn = parseFloat(document.getElementById("annualReturn").value) || 0;
+    let netWorth = 0;
+    let passiveGrowthPerSecond = 0;
+    let chart = null;
 
-      const savingsPerMonth = income - expenses;
-      const savingsPerMs = (savingsPerMonth * 12) / (365 * 24 * 60 * 60 * 1000);
-      const investmentPerMs = (investment * (annualReturn / 100)) / (365 * 24 * 60 * 60 * 1000);
-
-      growthPerMs = savingsPerMs + investmentPerMs;
-    }
-
-    function updateNetWorth() {
-      netWorth += growthPerMs;
-      document.getElementById("netWorthDisplay").textContent = formatMoney(netWorth);
-    }
-
-    function init() {
-      const starting = parseFloat(document.getElementById("startingNetWorth").value) || 0;
-      netWorth = starting;
-      calculateGrowthRate();
-      setInterval(() => {
-        updateNetWorth();
-        const now = new Date().toLocaleTimeString();
-        labels.push(now);
-        dataPoints.push(netWorth);
-        if (labels.length > 50) {
-          labels.shift();
-          dataPoints.shift();
-        }
-        chart.update();
-      }, 100);
-    }
-
-    function createChart() {
+    function startApp() {
       const ctx = document.getElementById('netWorthChart').getContext('2d');
       chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: labels,
+          labels: [],
           datasets: [{
             label: 'Net Worth',
-            data: dataPoints,
-            borderColor: '#007acc',
-            backgroundColor: 'rgba(0,122,204,0.1)',
-            tension: 0.2,
-            fill: true
+            borderColor: '#111',
+            backgroundColor: '#ccc',
+            data: [],
+            fill: true,
+            tension: 0.4,
           }]
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           scales: {
-            y: {
-              beginAtZero: false
-            }
+            x: { display: false },
+            y: { beginAtZero: true }
           }
         }
       });
+
+      recalculateAll(true);
+      setInterval(updateCounter, 100);
+    }
+
+    function calculateGrowthPerSecond() {
+      const income = parseFloat(document.getElementById("income").value) || 0;
+      const rent = parseFloat(document.getElementById("rent").value) || 0;
+      const bills = parseFloat(document.getElementById("bills").value) || 0;
+      const investments = parseFloat(document.getElementById("investments").value) || 0;
+      const investmentReturn = parseFloat(document.getElementById("investmentReturn").value) || 0;
+
+      const monthlySavings = income - rent - bills;
+      const savingsGrowth = monthlySavings > 0 ? (monthlySavings * 12) / (365 * 24 * 60 * 60) : 0;
+      const investmentGrowth = investments * (investmentReturn / 100) / (365 * 24 * 60 * 60);
+
+      return savingsGrowth + investmentGrowth;
+    }
+
+    function updateCounter() {
+      netWorth += passiveGrowthPerSecond / 10;
+      document.getElementById("counter").innerText = formatMoney(netWorth);
+
+      const now = new Date();
+      chart.data.labels.push(now.toLocaleTimeString());
+      chart.data.datasets[0].data.push(netWorth);
+      if (chart.data.labels.length > 100) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    }
+
+    function recalculateAll(reset = false) {
+      if (reset) {
+        const starting = parseFloat(document.getElementById("starting").value) || 0;
+        netWorth = starting;
+      }
+      passiveGrowthPerSecond = calculateGrowthPerSecond();
     }
 
     document.querySelectorAll("input").forEach(input => {
-      input.addEventListener("input", () => {
-        calculateGrowthRate();
+      input.addEventListener("input", (e) => {
+        if (e.target.id === "starting") recalculateAll(true);
+        else recalculateAll(false);
       });
     });
-
-    window.onload = () => {
-      createChart();
-      init();
-    };
   </script>
 </body>
 </html>
+
